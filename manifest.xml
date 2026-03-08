@@ -8,7 +8,7 @@
 
   <!-- アドインの基本情報 -->
   <!-- ★ Id は https://www.guidgenerator.com/ で生成したGUIDに変更してください -->
-  <Id>YOUR-GUID-HERE-0000-000000000000</Id>
+  <Id>4916e1a8-cc26-4a9c-ba37-c2f5c2b5e47f</Id>
   <Version>1.0.0.0</Version>
   <ProviderName>管理部門</ProviderName>
   <DefaultLocale>ja-JP</DefaultLocale>
