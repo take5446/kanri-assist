@@ -14,9 +14,9 @@
   <DefaultLocale>ja-JP</DefaultLocale>
   <DisplayName DefaultValue="KANRI ASSIST"/>
   <Description DefaultValue="定型メール返信と入力ミス防止チェックを自動化します"/>
-  <IconUrl DefaultValue="https://YOUR-GITHUB-USERNAME.github.io/kanri-assist/icon-32.png"/>
-  <HighResolutionIconUrl DefaultValue="https://YOUR-GITHUB-USERNAME.github.io/kanri-assist/icon-64.png"/>
-  <SupportUrl DefaultValue="https://YOUR-GITHUB-USERNAME.github.io/kanri-assist/"/>
+  <IconUrl DefaultValue="https://take5446.github.io/kanri-assist/icon-32.png"/>
+  <HighResolutionIconUrl DefaultValue="https://take5446.github.io/kanri-assist/icon-64.png"/>
+  <SupportUrl DefaultValue="https://take5446.github.io/kanri-assist/"/>
 
   <!-- Outlook専用設定 -->
   <Hosts>
@@ -35,7 +35,7 @@
     <Form xsi:type="ItemRead">
       <DesktopSettings>
         <!-- ★ URLを自分のGitHub PagesのURLに変更してください -->
-        <SourceLocation DefaultValue="https://YOUR-GITHUB-USERNAME.github.io/kanri-assist/taskpane.html"/>
+        <SourceLocation DefaultValue="https://take5446.github.io/kanri-assist/taskpane.html"/>
         <RequestedHeight>450</RequestedHeight>
       </DesktopSettings>
     </Form>
@@ -122,14 +122,14 @@
     <!-- リソース定義 -->
     <Resources>
       <bt:Images>
-        <bt:Image id="Icon.16x16" DefaultValue="https://YOUR-GITHUB-USERNAME.github.io/kanri-assist/icon-16.png"/>
-        <bt:Image id="Icon.32x32" DefaultValue="https://YOUR-GITHUB-USERNAME.github.io/kanri-assist/icon-32.png"/>
-        <bt:Image id="Icon.80x80" DefaultValue="https://YOUR-GITHUB-USERNAME.github.io/kanri-assist/icon-80.png"/>
+        <bt:Image id="Icon.16x16" DefaultValue="https://take5446.github.io/kanri-assist/icon-16.png"/>
+        <bt:Image id="Icon.32x32" DefaultValue="https://take5446.github.io/kanri-assist/icon-32.png"/>
+        <bt:Image id="Icon.80x80" DefaultValue="https://take5446.github.io/kanri-assist/icon-80.png"/>
       </bt:Images>
       <bt:Urls>
         <!-- ★ 3箇所のURLを自分のGitHub PagesのURLに変更してください -->
-        <bt:Url id="Commands.Url" DefaultValue="https://YOUR-GITHUB-USERNAME.github.io/kanri-assist/commands.html"/>
-        <bt:Url id="Taskpane.Url" DefaultValue="https://YOUR-GITHUB-USERNAME.github.io/kanri-assist/taskpane.html"/>
+        <bt:Url id="Commands.Url" DefaultValue="https://take5446.github.io/kanri-assist/commands.html"/>
+        <bt:Url id="Taskpane.Url" DefaultValue="https://take5446.github.io/kanri-assist/taskpane.html"/>
       </bt:Urls>
       <bt:ShortStrings>
         <bt:String id="GroupLabel" DefaultValue="KANRI ASSIST"/>
