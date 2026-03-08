@@ -1,0 +1,686 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KANRI ASSIST</title>
+<script src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #F7F5F0;
+    --surface: #FFFFFF;
+    --border: #E4E0D8;
+    --ink: #1A1714;
+    --ink2: #5C5750;
+    --ink3: #9C9890;
+    --accent: #1A1714;
+    --blue: #1D5FAA;
+    --blue-bg: #EEF4FB;
+    --green: #147A45;
+    --green-bg: #EAF6EE;
+    --amber: #A85A10;
+    --amber-bg: #FEF6EE;
+    --red: #C42020;
+    --red-bg: #FEF0F0;
+    --gold: #A07820;
+    --radius: 10px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; overflow: hidden; }
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: 'Noto Sans JP', 'Hiragino Sans', sans-serif;
+    font-size: 13px;
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+  }
+
+  /* ヘッダー */
+  .header {
+    background: var(--ink);
+    color: #fff;
+    padding: 10px 14px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-shrink: 0;
+  }
+  .header-logo {
+    font-size: 11px;
+    font-weight: 900;
+    letter-spacing: 0.12em;
+    color: #C8A830;
+  }
+  .header-sub { font-size: 10px; color: rgba(255,255,255,0.4); margin-left: 4px; }
+
+  /* タブ */
+  .tabs {
+    display: flex;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+  .tab {
+    flex: 1;
+    padding: 9px 4px;
+    border: none;
+    background: transparent;
+    font-family: inherit;
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--ink3);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: all 0.15s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+  }
+  .tab:hover { color: var(--ink2); }
+  .tab.active { color: var(--ink); border-bottom-color: var(--ink); }
+
+  /* スクロールエリア */
+  .scroll {
+    flex: 1;
+    overflow-y: auto;
+    padding: 14px 12px 20px;
+    -webkit-overflow-scrolling: touch;
+  }
+  .scroll::-webkit-scrollbar { width: 4px; }
+  .scroll::-webkit-scrollbar-track { background: transparent; }
+  .scroll::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  .panel { display: none; }
+  .panel.active { display: block; }
+
+  /* フォーム部品 */
+  .field { margin-bottom: 12px; }
+  .label {
+    display: block;
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--ink2);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    margin-bottom: 5px;
+  }
+  textarea, input, select {
+    width: 100%;
+    background: var(--surface);
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--ink);
+    font-family: inherit;
+    font-size: 13px;
+    line-height: 1.6;
+    padding: 9px 11px;
+    outline: none;
+    transition: border-color 0.15s, box-shadow 0.15s;
+    -webkit-appearance: none;
+    appearance: none;
+    resize: vertical;
+  }
+  textarea:focus, input:focus, select:focus {
+    border-color: var(--blue);
+    box-shadow: 0 0 0 3px rgba(29,95,170,0.1);
+  }
+
+  /* テンプレピッカー */
+  .tmpl-row {
+    display: flex;
+    gap: 5px;
+    flex-wrap: wrap;
+    margin-bottom: 12px;
+  }
+  .tmpl-chip {
+    padding: 5px 10px;
+    border-radius: 20px;
+    border: 1.5px solid var(--border);
+    background: var(--surface);
+    font-family: inherit;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--ink2);
+    cursor: pointer;
+    transition: all 0.15s;
+    white-space: nowrap;
+  }
+  .tmpl-chip:hover { border-color: var(--ink2); color: var(--ink); }
+  .tmpl-chip.active { background: var(--ink); color: #fff; border-color: var(--ink); }
+  .tmpl-section-label {
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--ink3);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-bottom: 5px;
+    margin-top: 10px;
+  }
+  .tmpl-section-label:first-child { margin-top: 0; }
+
+  /* ボタン */
+  .btn-primary {
+    width: 100%;
+    background: var(--ink);
+    color: #fff;
+    border: none;
+    border-radius: var(--radius);
+    padding: 12px;
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 800;
+    cursor: pointer;
+    transition: all 0.15s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    margin-top: 4px;
+  }
+  .btn-primary:hover:not(:disabled) { background: #333; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
+  .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; transform: none; box-shadow: none; }
+  .btn-secondary {
+    background: transparent;
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius);
+    padding: 7px 12px;
+    font-family: inherit;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--ink2);
+    cursor: pointer;
+    transition: all 0.12s;
+  }
+  .btn-secondary:hover { border-color: var(--ink2); color: var(--ink); }
+
+  /* 取得バナー */
+  .fetch-banner {
+    background: var(--blue-bg);
+    border: 1px solid rgba(29,95,170,0.2);
+    border-radius: var(--radius);
+    padding: 9px 12px;
+    font-size: 11px;
+    color: var(--blue);
+    font-weight: 600;
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+  }
+  .fetch-banner button {
+    background: var(--blue);
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    padding: 5px 10px;
+    font-family: inherit;
+    font-size: 11px;
+    font-weight: 700;
+    cursor: pointer;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  /* 区切り */
+  .divider { height: 1px; background: var(--border); margin: 14px 0; }
+
+  /* 結果カード */
+  .result-card {
+    background: var(--surface);
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    margin-top: 14px;
+  }
+  .result-head {
+    background: #F2EFE8;
+    border-bottom: 1px solid var(--border);
+    padding: 8px 12px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--ink2);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+  .result-body {
+    padding: 12px;
+    font-size: 12px;
+    line-height: 1.8;
+    white-space: pre-wrap;
+    color: var(--ink);
+    max-height: 300px;
+    overflow-y: auto;
+  }
+  .result-body.loading { color: var(--ink3); font-style: italic; animation: blink 1.2s ease-in-out infinite; }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.5} }
+
+  /* 返信挿入ボタン */
+  .insert-bar {
+    background: #F2EFE8;
+    border-top: 1px solid var(--border);
+    padding: 8px 10px;
+    display: flex;
+    gap: 6px;
+  }
+  .insert-bar button {
+    flex: 1;
+    padding: 7px;
+    border-radius: 7px;
+    border: none;
+    font-family: inherit;
+    font-size: 11px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.12s;
+  }
+  .btn-insert { background: var(--blue); color: #fff; }
+  .btn-insert:hover { background: #1a4f8a; }
+  .btn-copy { background: var(--surface); color: var(--ink2); border: 1.5px solid var(--border) !important; }
+  .btn-copy:hover { border-color: var(--ink2) !important; color: var(--ink); }
+
+  /* チェック結果 */
+  .score-box {
+    background: var(--surface);
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 10px;
+  }
+  .score-num {
+    font-size: 44px;
+    font-weight: 900;
+    line-height: 1;
+    flex-shrink: 0;
+  }
+  .score-bar-wrap { flex: 1; }
+  .score-bar { height: 6px; background: var(--bg); border-radius: 3px; overflow: hidden; margin: 5px 0 6px; }
+  .score-bar-fill { height: 100%; border-radius: 3px; transition: width 0.8s; }
+  .score-status { font-size: 12px; font-weight: 800; }
+  .score-summary { font-size: 11px; color: var(--ink2); margin-top: 2px; line-height: 1.4; }
+
+  .check-item {
+    border-left: 3px solid transparent;
+    border-radius: 8px;
+    padding: 10px 12px;
+    margin-bottom: 7px;
+    font-size: 12px;
+  }
+  .ci-ok { background: var(--green-bg); border-left-color: var(--green); }
+  .ci-warn { background: var(--amber-bg); border-left-color: var(--amber); }
+  .ci-err { background: var(--red-bg); border-left-color: var(--red); }
+  .ci-title { font-weight: 700; margin-bottom: 2px; }
+  .ci-ok .ci-title { color: var(--green); }
+  .ci-warn .ci-title { color: var(--amber); }
+  .ci-err .ci-title { color: var(--red); }
+  .ci-desc { color: var(--ink2); line-height: 1.5; font-size: 11px; }
+
+  /* チェック種別グリッド */
+  .type-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+    margin-bottom: 12px;
+  }
+  .type-btn {
+    padding: 9px 6px;
+    border: 1.5px solid var(--border);
+    border-radius: 8px;
+    background: var(--surface);
+    font-family: inherit;
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--ink2);
+    cursor: pointer;
+    transition: all 0.12s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+  }
+  .type-btn:hover { border-color: var(--ink2); color: var(--ink); }
+  .type-btn.active { background: var(--ink); color: #fff; border-color: var(--ink); }
+
+  /* コピー完了トースト */
+  .toast {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%) translateY(60px);
+    background: var(--ink);
+    color: #fff;
+    padding: 8px 18px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 700;
+    transition: transform 0.3s ease;
+    z-index: 9999;
+    pointer-events: none;
+  }
+  .toast.show { transform: translateX(-50%) translateY(0); }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <span class="header-logo">KANRI ASSIST</span>
+  <span class="header-sub">管理部門 業務自動化</span>
+</div>
+
+<div class="tabs">
+  <button class="tab active" onclick="switchTab('mail',this)">📧 返信生成</button>
+  <button class="tab" onclick="switchTab('check',this)">🔍 入力チェック</button>
+</div>
+
+<div class="scroll">
+
+  <!-- ===== メールパネル ===== -->
+  <div id="panel-mail" class="panel active">
+
+    <div class="fetch-banner" id="fetch-banner">
+      <span>📨 開いているメールを自動取得できます</span>
+      <button onclick="fetchMailBody()">取得する</button>
+    </div>
+
+    <div class="tmpl-section-label">社内向け</div>
+    <div class="tmpl-row" id="tmpl-in"></div>
+    <div class="tmpl-section-label">社外向け</div>
+    <div class="tmpl-row" id="tmpl-out"></div>
+
+    <div class="field">
+      <label class="label">受信メール本文</label>
+      <textarea id="mail-input" rows="6" placeholder="メールを貼り付け、または上のボタンで自動取得…"></textarea>
+    </div>
+
+    <div class="field">
+      <label class="label">返信トーン</label>
+      <select id="mail-tone">
+        <option>丁寧・フォーマル（社外標準）</option>
+        <option>簡潔・ビジネス（社内標準）</option>
+        <option>親しみやすい（社内カジュアル）</option>
+      </select>
+    </div>
+
+    <div class="field">
+      <label class="label">署名・部署名</label>
+      <input id="mail-sig" type="text" placeholder="例：管理部 山田">
+    </div>
+
+    <div class="field">
+      <label class="label">補足（任意）</label>
+      <input id="mail-note" type="text" placeholder="例：会議は来週水曜15時に確定">
+    </div>
+
+    <button class="btn-primary" id="mail-btn" onclick="generateMail()">✨ 返信文を生成</button>
+
+    <div class="result-card" id="mail-result-card" style="display:none">
+      <div class="result-head">
+        📬 生成された返信文
+      </div>
+      <div class="result-body" id="mail-result"></div>
+      <div class="insert-bar">
+        <button class="btn-insert" onclick="insertReply()">📩 返信に挿入</button>
+        <button class="btn-copy" onclick="copyResult()">コピー</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== チェックパネル ===== -->
+  <div id="panel-check" class="panel">
+
+    <label class="label">書類種別</label>
+    <div class="type-grid">
+      <button class="type-btn active" id="ct-0" onclick="setCheckType(0)">📝 稟議・申請書</button>
+      <button class="type-btn" id="ct-1" onclick="setCheckType(1)">💰 見積・発注書</button>
+      <button class="type-btn" id="ct-2" onclick="setCheckType(2)">📄 契約書・覚書</button>
+      <button class="type-btn" id="ct-3" onclick="setCheckType(3)">📧 メール送信前</button>
+    </div>
+
+    <div class="field" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px;">
+      <label class="label" style="margin:0">チェック内容</label>
+      <button class="btn-secondary" onclick="loadDemo()" style="font-size:10px;padding:4px 8px;">⚡ サンプル</button>
+    </div>
+    <div class="field" style="margin-top:0">
+      <textarea id="check-input" rows="8" placeholder="申請書・書類の内容を貼り付けてください…"></textarea>
+    </div>
+
+    <button class="btn-primary" id="check-btn" onclick="runCheck()">🔍 チェック実行</button>
+
+    <div id="check-result" style="margin-top:14px; display:none;"></div>
+  </div>
+
+</div>
+
+<div class="toast" id="toast">✅ コピーしました</div>
+
+<script>
+// ===== テンプレート =====
+const TEMPLATES = [
+  { label:"会議・日程調整", icon:"📅", type:"in", tone:"簡潔・ビジネス（社内標準）",
+    mail:`件名：来週の定例会議について\n\nお疲れ様です。営業部の田中です。\n\n来週の定例会議の日程について確認させてください。候補日として以下を考えているのですが、いかがでしょうか。\n\n①火曜日 14:00〜15:00\n②水曜日 10:00〜11:00\n③木曜日 16:00〜17:00\n\nご都合のよい日時をお知らせください。` },
+  { label:"申請承認・却下", icon:"📋", type:"in", tone:"簡潔・ビジネス（社内標準）",
+    mail:`件名：備品購入申請について（申請番号：2024-0312）\n\nお疲れ様です。総務部です。\n\n先日ご申請いただいたノートPC2台（合計24万円）の購入申請について、審査結果をご連絡します。内容をご確認いただき、承認をお願いいたします。` },
+  { label:"問い合わせ回答", icon:"❓", type:"in", tone:"簡潔・ビジネス（社内標準）",
+    mail:`件名：有給休暇の残日数について\n\nお疲れ様です。有給休暇の残日数を確認したいのですが、現時点で何日残っているか教えていただけますか？また、来月まとめて5日間取得することは可能でしょうか。\n\nよろしくお願いします。\n開発部 鈴木` },
+  { label:"お礼・御礼", icon:"🤝", type:"out", tone:"丁寧・フォーマル（社外標準）",
+    mail:`件名：先日はありがとうございました\n\n株式会社〇〇\n管理部御中\n\n先日は弊社へのご来訪、誠にありがとうございました。ご提案いただいた内容について、社内で検討を進めております。改めてお礼申し上げたく、ご連絡いたしました。` },
+  { label:"お断り・辞退", icon:"🙏", type:"out", tone:"丁寧・フォーマル（社外標準）",
+    mail:`件名：展示会出展のご案内について\n\n株式会社〇〇\n営業部 佐藤様\n\nいつもお世話になっております。先日ご案内いただきました来春の展示会への出展について、ご検討の結果をお伝えしたくご連絡いたしました。\n今回は諸事情により出展は難しい状況でございます。` },
+  { label:"納期・進捗確認", icon:"📦", type:"out", tone:"丁寧・フォーマル（社外標準）",
+    mail:`件名：納品スケジュールの確認\n\n株式会社〇〇\n担当者様\n\nお世話になっております。先日発注しました件（発注番号：PO-2024-0089）について、納品予定日をご確認させていただけますでしょうか。社内の工程管理上、確認が必要となっております。` },
+];
+
+const CHECK_TYPES = ["稟議書・申請書","見積書・発注書","契約書・覚書","メール送信前チェック"];
+const CHECK_DEMO = `件名：ノートPC購入稟議\n\n申請日：2024年3月15日\n申請部署：営業部\n申請者：田中一郎\n\n【購入品目】\n品名：ノートパソコン（法人モデル）\n数量：3台\n単価：148,000円\n合計：450,000円\n\n【使用目的】\n新入社員4月入社予定者への支給用\n\n【業者】\n株式会社〇〇商事\n\n以上、ご承認のほどよろしくお願い申し上げます。`;
+
+let tmplIdx = 0;
+let checkTypeIdx = 0;
+let currentMailResult = "";
+let officeReady = false;
+
+// Office.js 初期化
+Office.onReady(info => {
+  officeReady = true;
+  if (info.host !== Office.HostType.Outlook) {
+    document.getElementById('fetch-banner').style.display = 'none';
+  }
+});
+
+// テンプレチップ生成
+function buildTemplateChips() {
+  ['in','out'].forEach(type => {
+    const el = document.getElementById('tmpl-' + type);
+    TEMPLATES.filter(t => t.type === type).forEach((t, rawIdx) => {
+      const idx = TEMPLATES.indexOf(t);
+      const chip = document.createElement('button');
+      chip.className = 'tmpl-chip' + (idx === 0 ? ' active' : '');
+      chip.id = 'chip-' + idx;
+      chip.textContent = t.icon + ' ' + t.label;
+      chip.onclick = () => loadTemplate(idx);
+      el.appendChild(chip);
+    });
+  });
+}
+
+function loadTemplate(idx) {
+  tmplIdx = idx;
+  const t = TEMPLATES[idx];
+  document.getElementById('mail-input').value = t.mail;
+  document.getElementById('mail-tone').value = t.tone;
+  document.querySelectorAll('.tmpl-chip').forEach(c => c.classList.remove('active'));
+  document.getElementById('chip-' + idx)?.classList.add('active');
+  document.getElementById('mail-result-card').style.display = 'none';
+}
+buildTemplateChips();
+loadTemplate(0);
+
+// Office.js でメール本文を取得
+function fetchMailBody() {
+  if (!officeReady) return alert('Outlookで開いてください');
+  const item = Office.context.mailbox.item;
+  if (!item) return alert('メールを開いた状態でお試しください');
+  item.body.getAsync(Office.CoercionType.Text, result => {
+    if (result.status === Office.AsyncResultStatus.Succeeded) {
+      const subj = item.subject || '';
+      document.getElementById('mail-input').value =
+        (subj ? '件名：' + subj + '\n\n' : '') + result.value.trim();
+      document.getElementById('fetch-banner').style.background = '#EAF6EE';
+      document.getElementById('fetch-banner').style.color = '#147A45';
+      document.getElementById('fetch-banner').querySelector('span').textContent = '✅ メール本文を取得しました';
+      document.getElementById('fetch-banner').querySelector('button').style.display = 'none';
+    }
+  });
+}
+
+// 返信文を新規返信に挿入
+function insertReply() {
+  if (!officeReady || !currentMailResult) { copyResult(); return; }
+  Office.context.mailbox.item.displayReplyForm({ htmlBody: currentMailResult.replace(/\n/g,'<br>') });
+}
+
+// API 呼び出し
+async function callClaude(system, user) {
+  const res = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      model: "claude-sonnet-4-20250514",
+      max_tokens: 1000,
+      system,
+      messages: [{ role: "user", content: user }]
+    })
+  });
+  const data = await res.json();
+  if (data.error) throw new Error(data.error.message);
+  return data.content.map(c => c.text || '').join('');
+}
+
+// メール生成
+async function generateMail() {
+  const input = document.getElementById('mail-input').value.trim();
+  if (!input) return;
+  const tone = document.getElementById('mail-tone').value;
+  const sig = document.getElementById('mail-sig').value.trim();
+  const note = document.getElementById('mail-note').value.trim();
+
+  const btn = document.getElementById('mail-btn');
+  btn.disabled = true; btn.textContent = '⏳ 生成中…';
+
+  const card = document.getElementById('mail-result-card');
+  const result = document.getElementById('mail-result');
+  card.style.display = 'block';
+  result.className = 'result-body loading';
+  result.textContent = 'AIが返信文を作成しています…';
+
+  try {
+    const r = await callClaude(
+      `あなたは日本企業の管理部門のメール担当者です。受信メールに対して${tone}なトーンで返信メールを作成してください。件名（Re:〜）から本文・署名まで含めた完全な返信メールを出力してください。署名は「${sig || "管理部 担当者"}」としてください。${note ? "補足: " + note : ""}返信文のみ出力し、説明・前置き不要。`,
+      `以下のメールへの返信文を作成してください:\n\n${input}`
+    );
+    result.className = 'result-body';
+    result.textContent = r;
+    currentMailResult = r;
+  } catch(e) {
+    result.className = 'result-body';
+    result.textContent = 'エラー: ' + e.message;
+  }
+  btn.disabled = false; btn.textContent = '✨ 返信文を生成';
+}
+
+// コピー
+function copyResult() {
+  if (!currentMailResult) return;
+  navigator.clipboard?.writeText(currentMailResult);
+  showToast();
+}
+function showToast() {
+  const t = document.getElementById('toast');
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2000);
+}
+
+// チェック種別
+function setCheckType(idx) {
+  checkTypeIdx = idx;
+  document.querySelectorAll('.type-btn').forEach((b,i) => b.classList.toggle('active', i === idx));
+}
+
+// サンプル
+function loadDemo() {
+  document.getElementById('check-input').value = CHECK_DEMO;
+}
+
+// チェック実行
+async function runCheck() {
+  const input = document.getElementById('check-input').value.trim();
+  if (!input) return;
+
+  const btn = document.getElementById('check-btn');
+  btn.disabled = true; btn.textContent = '⏳ チェック中…';
+
+  const wrap = document.getElementById('check-result');
+  wrap.style.display = 'block';
+  wrap.innerHTML = '<div style="color:#9C9890;font-size:12px;padding:8px 0;">AIが検証しています…</div>';
+
+  try {
+    const raw = await callClaude(
+      `あなたは日本企業の管理部門の審査担当者です。「${CHECK_TYPES[checkTypeIdx]}」をチェックします。
+必ず以下のJSON形式だけを出力してください。説明文・マークダウン・コードブロックは一切不要です。
+{"score":整数0-100,"overall":"OK","summary":"総評","items":[{"status":"ok","label":"項目名","detail":"説明"}]}
+overallは "OK" か "WARN" か "ERROR" のいずれか。statusは "ok" か "warn" か "err" のいずれか。`,
+      `以下の内容をチェックしてJSON形式のみで返答してください:\n\n${input}`
+    );
+    const match = raw.match(/\{[\s\S]*\}/);
+    if (!match) throw new Error('JSONが見つかりませんでした');
+    renderCheck(JSON.parse(match[0]));
+  } catch(e) {
+    wrap.innerHTML = `<div style="color:#C42020;font-size:12px;">エラー: ${e.message}</div>`;
+  }
+  btn.disabled = false; btn.textContent = '🔍 チェック実行';
+}
+
+function renderCheck(d) {
+  const score = d.score || 0;
+  const color = score >= 80 ? '#147A45' : score >= 50 ? '#A85A10' : '#C42020';
+  const icons = { ok:'✅', warn:'⚠️', err:'❌' };
+  const ciClass = { ok:'ci-ok', warn:'ci-warn', err:'ci-err' };
+
+  const items = (d.items||[]).map(item => `
+    <div class="check-item ${ciClass[item.status]||'ci-ok'}">
+      <div class="ci-title">${icons[item.status]||'•'} ${item.label}</div>
+      <div class="ci-desc">${item.detail}</div>
+    </div>`).join('');
+
+  document.getElementById('check-result').innerHTML = `
+    <div class="score-box">
+      <div class="score-num" style="color:${color}">${score}</div>
+      <div class="score-bar-wrap">
+        <div style="font-size:10px;color:#9C9890;font-weight:700;">品質スコア / 100点</div>
+        <div class="score-bar"><div class="score-bar-fill" style="width:${score}%;background:${color}"></div></div>
+        <div class="score-status" style="color:${color}">${d.overall==='OK'?'✅ 問題なし':d.overall==='WARN'?'⚠️ 要確認':'❌ 要修正'}</div>
+        <div class="score-summary">${d.summary||''}</div>
+      </div>
+    </div>
+    ${items}`;
+}
+
+// タブ切替
+function switchTab(name, btn) {
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(b => b.classList.remove('active'));
+  document.getElementById('panel-' + name).classList.add('active');
+  btn.classList.add('active');
+}
+</script>
+</body>
+</html>
