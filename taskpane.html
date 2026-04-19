@@ -24,6 +24,7 @@
     --red: #C42020;
     --red-bg: #FEF0F0;
     --gold: #A07820;
+    --gold-bg: #FDF8EE;
     --radius: 10px;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -351,6 +352,72 @@
   .type-btn:hover { border-color: var(--ink2); color: var(--ink); }
   .type-btn.active { background: var(--ink); color: #fff; border-color: var(--ink); }
 
+  /* ヘッダー設定ボタン */
+  .header-sub { flex: 1; }
+  .btn-settings {
+    background: transparent;
+    border: 1px solid rgba(255,255,255,0.25);
+    border-radius: 6px;
+    color: rgba(255,255,255,0.6);
+    font-size: 15px;
+    width: 28px; height: 28px;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.15s;
+    flex-shrink: 0;
+  }
+  .btn-settings:hover { border-color: rgba(255,255,255,0.6); color: #fff; }
+
+  /* 朝番パネル */
+  .morning-card {
+    background: linear-gradient(135deg, var(--ink) 0%, #2a2520 100%);
+    border-radius: var(--radius);
+    padding: 14px;
+    color: #fff;
+    margin-bottom: 14px;
+  }
+  .morning-day  { font-size: 10px; font-weight: 700; color: #C8A830; letter-spacing: 0.12em; }
+  .morning-date { font-size: 26px; font-weight: 900; line-height: 1.1; margin: 3px 0; }
+  .morning-greet { font-size: 11px; color: rgba(255,255,255,0.55); margin-top: 3px; }
+
+  /* 設定モーダル */
+  .modal-overlay {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.5);
+    z-index: 1000;
+    display: flex; align-items: center; justify-content: center;
+    opacity: 0; pointer-events: none;
+    transition: opacity 0.2s;
+  }
+  .modal-overlay.show { opacity: 1; pointer-events: all; }
+  .modal {
+    background: var(--surface);
+    border-radius: 14px;
+    padding: 20px;
+    width: calc(100% - 32px);
+    max-width: 320px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    transform: translateY(16px);
+    transition: transform 0.2s;
+  }
+  .modal-overlay.show .modal { transform: translateY(0); }
+  .modal-title { font-size: 13px; font-weight: 900; margin-bottom: 4px; }
+  .modal-sub { font-size: 11px; color: var(--ink3); margin-bottom: 14px; line-height: 1.5; }
+  .modal-footer { display: flex; gap: 8px; margin-top: 14px; }
+  .btn-modal-cancel {
+    flex: 1; padding: 10px; border: 1.5px solid var(--border);
+    border-radius: 8px; background: transparent;
+    font-family: inherit; font-size: 12px; font-weight: 700;
+    color: var(--ink2); cursor: pointer;
+  }
+  .btn-modal-save {
+    flex: 2; padding: 10px; border: none;
+    border-radius: 8px; background: var(--ink);
+    color: #fff; font-family: inherit; font-size: 12px;
+    font-weight: 800; cursor: pointer;
+  }
+  .btn-modal-save:hover { background: #333; }
+
   /* コピー完了トースト */
   .toast {
     position: fixed;
@@ -374,18 +441,53 @@
 
 <div class="header">
   <span class="header-logo">KANRI ASSIST</span>
-  <span class="header-sub">管理部門 業務自動化</span>
+  <span class="header-sub">管理部門 AI秘書</span>
+  <button class="btn-settings" onclick="openSettings()" title="API設定">⚙</button>
 </div>
 
 <div class="tabs">
-  <button class="tab active" onclick="switchTab('mail',this)">📧 返信生成</button>
-  <button class="tab" onclick="switchTab('check',this)">🔍 入力チェック</button>
+  <button class="tab active" onclick="switchTab('morning',this)">☀️ 朝番</button>
+  <button class="tab" onclick="switchTab('mail',this)">📧 返信</button>
+  <button class="tab" onclick="switchTab('check',this)">🔍 書類</button>
+  <button class="tab" onclick="switchTab('nego',this)">🤝 調整</button>
 </div>
 
 <div class="scroll">
 
+  <!-- ===== 朝番パネル ===== -->
+  <div id="panel-morning" class="panel active">
+    <div class="morning-card">
+      <div class="morning-day"  id="morning-day"></div>
+      <div class="morning-date" id="morning-date-num"></div>
+      <div class="morning-greet" id="morning-greet"></div>
+    </div>
+
+    <div class="field">
+      <label class="label">今日のタスク</label>
+      <textarea id="morning-tasks" rows="5" placeholder="例：&#10;・契約書レビュー（A社）&#10;・予算申請書の作成&#10;・備品発注（締め切り今日）&#10;・部署横断MTG準備"></textarea>
+    </div>
+    <div class="field">
+      <label class="label">会議・予定</label>
+      <textarea id="morning-meetings" rows="3" placeholder="例：&#10;10:00 部長定例（30分）&#10;14:00 A社オンライン商談（1時間）"></textarea>
+    </div>
+    <div class="field">
+      <label class="label">今日の懸念・重点（任意）</label>
+      <input id="morning-focus" type="text" placeholder="例：予算案の締め切りが今月末で厳しい">
+    </div>
+
+    <button class="btn-primary" id="morning-btn" onclick="generateMorningBrief()">☀️ 1日プランを生成</button>
+
+    <div class="result-card" id="morning-result-card" style="display:none">
+      <div class="result-head">
+        ☀️ 今日の作戦
+        <button class="btn-secondary" style="font-size:10px;padding:3px 8px;" onclick="copyText(currentMorningResult)">コピー</button>
+      </div>
+      <div class="result-body" id="morning-result"></div>
+    </div>
+  </div>
+
   <!-- ===== メールパネル ===== -->
-  <div id="panel-mail" class="panel active">
+  <div id="panel-mail" class="panel">
 
     <div class="fetch-banner" id="fetch-banner">
       <span>📨 開いているメールを自動取得できます</span>
@@ -459,12 +561,170 @@
     <div id="check-result" style="margin-top:14px; display:none;"></div>
   </div>
 
+
+  <!-- ===== 調整パネル ===== -->
+  <div id="panel-nego" class="panel">
+    <label class="label">調整・交渉の種類</label>
+    <div class="type-grid" id="nego-type-grid">
+      <button class="type-btn active" id="nt-0" onclick="setNegoType(0)">📋 社内依頼・調整</button>
+      <button class="type-btn" id="nt-1" onclick="setNegoType(1)">🤝 社外交渉・提案</button>
+      <button class="type-btn" id="nt-2" onclick="setNegoType(2)">🙏 断り・辞退</button>
+      <button class="type-btn" id="nt-3" onclick="setNegoType(3)">⚖️ 条件・合意形成</button>
+    </div>
+
+    <div class="field">
+      <label class="label">状況・背景</label>
+      <textarea id="nego-context" rows="4" placeholder="例：A部署から急な追加作業を依頼されたが、今月は予算策定で手が回らない…"></textarea>
+    </div>
+    <div class="field">
+      <label class="label">自分の立場・制約</label>
+      <input id="nego-position" type="text" placeholder="例：管理部 / 今月は決算対応で工数ゼロ">
+    </div>
+    <div class="field">
+      <label class="label">目指したい着地点</label>
+      <input id="nego-goal" type="text" placeholder="例：来月以降への先送り / 部分対応での合意">
+    </div>
+
+    <button class="btn-primary" id="nego-btn" onclick="generateNego()">🤝 文案を生成</button>
+
+    <div class="result-card" id="nego-result-card" style="display:none">
+      <div class="result-head">
+        🤝 調整文案
+        <button class="btn-secondary" style="font-size:10px;padding:3px 8px;" onclick="copyText(currentNegoResult)">コピー</button>
+      </div>
+      <div class="result-body" id="nego-result"></div>
+    </div>
+  </div>
+
+</div>
+
+<!-- 設定モーダル -->
+<div class="modal-overlay" id="settings-modal">
+  <div class="modal">
+    <div class="modal-title">⚙ API設定</div>
+    <div class="modal-sub">Anthropic API キーを入力してください。このデバイスのみに保存されます。</div>
+    <div class="field">
+      <label class="label">Anthropic API Key</label>
+      <input type="password" id="api-key-input" placeholder="sk-ant-...">
+    </div>
+    <div class="modal-footer">
+      <button class="btn-modal-cancel" onclick="closeSettings()">キャンセル</button>
+      <button class="btn-modal-save" onclick="saveSettings()">✓ 保存</button>
+    </div>
+  </div>
 </div>
 
 <div class="toast" id="toast">✅ コピーしました</div>
 
 <script>
-// ===== テンプレート =====
+// ===== 状態 =====
+let currentMailResult = "";
+let currentMorningResult = "";
+let currentNegoResult = "";
+let tmplIdx = 0;
+let checkTypeIdx = 0;
+let negoTypeIdx = 0;
+let officeReady = false;
+
+// ===== Office.js 初期化 =====
+Office.onReady(info => {
+  officeReady = true;
+  if (info.host !== Office.HostType.Outlook) {
+    document.getElementById('fetch-banner').style.display = 'none';
+  }
+});
+
+// ===== API キー管理 =====
+function getApiKey() { return localStorage.getItem('kanri-assist-api-key') || ''; }
+function openSettings() {
+  document.getElementById('api-key-input').value = getApiKey();
+  document.getElementById('settings-modal').classList.add('show');
+}
+function closeSettings() { document.getElementById('settings-modal').classList.remove('show'); }
+function saveSettings() {
+  const key = document.getElementById('api-key-input').value.trim();
+  if (key) localStorage.setItem('kanri-assist-api-key', key);
+  closeSettings();
+  showToast('✅ APIキーを保存しました');
+}
+document.getElementById('settings-modal').addEventListener('click', e => {
+  if (e.target.id === 'settings-modal') closeSettings();
+});
+
+// ===== API 呼び出し（共通） =====
+async function callClaude(system, user, maxTokens = 1500) {
+  const apiKey = getApiKey();
+  if (!apiKey) { openSettings(); throw new Error('APIキーを設定してください（⚙ボタン）'); }
+  const res = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-api-key": apiKey,
+      "anthropic-version": "2023-06-01",
+      "anthropic-dangerous-request-proxy": "true"
+    },
+    body: JSON.stringify({
+      model: "claude-sonnet-4-6",
+      max_tokens: maxTokens,
+      system,
+      messages: [{ role: "user", content: user }]
+    })
+  });
+  const data = await res.json();
+  if (data.error) throw new Error(data.error.message);
+  return data.content.map(c => c.text || '').join('');
+}
+
+// ===== 朝番エージェント =====
+function initMorningCard() {
+  const now = new Date();
+  const days = ['日曜日','月曜日','火曜日','水曜日','木曜日','金曜日','土曜日'];
+  const h = now.getHours();
+  const greet = h < 10 ? 'おはようございます' : h < 17 ? 'お疲れ様です' : 'お疲れ様でした';
+  document.getElementById('morning-day').textContent =
+    `${now.getFullYear()}年${now.getMonth()+1}月 — ${days[now.getDay()]}`;
+  document.getElementById('morning-date-num').textContent =
+    `${now.getMonth()+1}月${now.getDate()}日`;
+  document.getElementById('morning-greet').textContent =
+    `${greet}、タケさん。今日も静かに、着実に。`;
+}
+initMorningCard();
+
+async function generateMorningBrief() {
+  const tasks    = document.getElementById('morning-tasks').value.trim();
+  const meetings = document.getElementById('morning-meetings').value.trim();
+  const focus    = document.getElementById('morning-focus').value.trim();
+  if (!tasks && !meetings) return;
+
+  const btn = document.getElementById('morning-btn');
+  btn.disabled = true; btn.textContent = '⏳ 作戦立案中…';
+  const card   = document.getElementById('morning-result-card');
+  const result = document.getElementById('morning-result');
+  card.style.display = 'block';
+  result.className = 'result-body loading';
+  result.textContent = '今日の作戦を立案しています…';
+
+  try {
+    const now = new Date();
+    const r = await callClaude(
+      `あなたは「静かなる技術者」タケさんの専属AI秘書です。タケさんは管理部門に勤めながら技術の力で静かに問題を解決することを目指しています。
+今日（${now.getMonth()+1}月${now.getDate()}日）のタスクと会議から実践的な1日プランを作成してください。
+
+出力形式（簡潔に・余計な前置き不要）:
+1. 優先順位付きタスク（🔴高/🟡中/🟢低）
+2. 推奨タイムブロック（9:00〜18:00）
+3. 静かなる技術者の視点：今日のタスクで自動化・効率化できる点を1〜2点提案`,
+      `タスク:\n${tasks||"なし"}\n会議・予定:\n${meetings||"なし"}${focus?`\n懸念: ${focus}`:''}`
+    );
+    result.className = 'result-body'; result.textContent = r;
+    currentMorningResult = r;
+  } catch(e) {
+    result.className = 'result-body'; result.textContent = 'エラー: ' + e.message;
+  }
+  btn.disabled = false; btn.textContent = '☀️ 1日プランを生成';
+}
+
+// ===== テンプレートデータ =====
 const TEMPLATES = [
   { label:"会議・日程調整", icon:"📅", type:"in", tone:"簡潔・ビジネス（社内標準）",
     mail:`件名：来週の定例会議について\n\nお疲れ様です。営業部の田中です。\n\n来週の定例会議の日程について確認させてください。候補日として以下を考えているのですが、いかがでしょうか。\n\n①火曜日 14:00〜15:00\n②水曜日 10:00〜11:00\n③木曜日 16:00〜17:00\n\nご都合のよい日時をお知らせください。` },
@@ -483,18 +743,7 @@ const TEMPLATES = [
 const CHECK_TYPES = ["稟議書・申請書","見積書・発注書","契約書・覚書","メール送信前チェック"];
 const CHECK_DEMO = `件名：ノートPC購入稟議\n\n申請日：2024年3月15日\n申請部署：営業部\n申請者：田中一郎\n\n【購入品目】\n品名：ノートパソコン（法人モデル）\n数量：3台\n単価：148,000円\n合計：450,000円\n\n【使用目的】\n新入社員4月入社予定者への支給用\n\n【業者】\n株式会社〇〇商事\n\n以上、ご承認のほどよろしくお願い申し上げます。`;
 
-let tmplIdx = 0;
-let checkTypeIdx = 0;
-let currentMailResult = "";
-let officeReady = false;
-
-// Office.js 初期化
-Office.onReady(info => {
-  officeReady = true;
-  if (info.host !== Office.HostType.Outlook) {
-    document.getElementById('fetch-banner').style.display = 'none';
-  }
-});
+const NEGO_TYPES = ["社内依頼・調整","社外交渉・提案","断り・辞退","条件・合意形成"];
 
 // テンプレチップ生成
 function buildTemplateChips() {
@@ -548,23 +797,6 @@ function insertReply() {
   Office.context.mailbox.item.displayReplyForm({ htmlBody: currentMailResult.replace(/\n/g,'<br>') });
 }
 
-// API 呼び出し
-async function callClaude(system, user) {
-  const res = await fetch("https://api.anthropic.com/v1/messages", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      model: "claude-sonnet-4-20250514",
-      max_tokens: 1000,
-      system,
-      messages: [{ role: "user", content: user }]
-    })
-  });
-  const data = await res.json();
-  if (data.error) throw new Error(data.error.message);
-  return data.content.map(c => c.text || '').join('');
-}
-
 // メール生成
 async function generateMail() {
   const input = document.getElementById('mail-input').value.trim();
@@ -597,22 +829,57 @@ async function generateMail() {
   btn.disabled = false; btn.textContent = '✨ 返信文を生成';
 }
 
-// コピー
-function copyResult() {
-  if (!currentMailResult) return;
-  navigator.clipboard?.writeText(currentMailResult);
-  showToast();
+// コピー（共通）
+function copyText(text) {
+  if (!text) return;
+  navigator.clipboard?.writeText(text);
+  showToast('✅ コピーしました');
 }
-function showToast() {
+function copyResult() { copyText(currentMailResult); }
+function showToast(msg) {
   const t = document.getElementById('toast');
+  t.textContent = msg || '✅ コピーしました';
   t.classList.add('show');
   setTimeout(() => t.classList.remove('show'), 2000);
 }
 
-// チェック種別
+// チェック種別（ct-* ID で限定）
 function setCheckType(idx) {
   checkTypeIdx = idx;
-  document.querySelectorAll('.type-btn').forEach((b,i) => b.classList.toggle('active', i === idx));
+  for (let i = 0; i < 4; i++) document.getElementById('ct-'+i)?.classList.toggle('active', i === idx);
+}
+
+// 調整エージェント
+function setNegoType(idx) {
+  negoTypeIdx = idx;
+  for (let i = 0; i < 4; i++) document.getElementById('nt-'+i)?.classList.toggle('active', i === idx);
+}
+
+async function generateNego() {
+  const context  = document.getElementById('nego-context').value.trim();
+  if (!context) return;
+  const position = document.getElementById('nego-position').value.trim();
+  const goal     = document.getElementById('nego-goal').value.trim();
+
+  const btn    = document.getElementById('nego-btn');
+  btn.disabled = true; btn.textContent = '⏳ 生成中…';
+  const card   = document.getElementById('nego-result-card');
+  const result = document.getElementById('nego-result');
+  card.style.display = 'block';
+  result.className = 'result-body loading';
+  result.textContent = 'AIが文案を作成しています…';
+
+  try {
+    const r = await callClaude(
+      `あなたは日本企業の管理部門の交渉・調整支援エージェントです。「${NEGO_TYPES[negoTypeIdx]}」の場面で日本のビジネス文化に合った、丁寧かつ実務的な文案を作成します。相手との関係を壊さず、自分の立場や制約を伝えながら、目指す着地点へ向かう文章を書いてください。メール形式か口頭メモ形式（状況に応じて選択）で出力。文案のみ出力。`,
+      `状況・背景: ${context}\n自分の立場・制約: ${position||"管理部"}\n目指したい着地点: ${goal||"相互理解・合意"}`
+    );
+    result.className = 'result-body'; result.textContent = r;
+    currentNegoResult = r;
+  } catch(e) {
+    result.className = 'result-body'; result.textContent = 'エラー: ' + e.message;
+  }
+  btn.disabled = false; btn.textContent = '🤝 文案を生成';
 }
 
 // サンプル
@@ -681,6 +948,9 @@ function switchTab(name, btn) {
   document.getElementById('panel-' + name).classList.add('active');
   btn.classList.add('active');
 }
+
+// 初回起動時にAPIキーがなければ設定モーダルを表示
+window.addEventListener('load', () => { if (!getApiKey()) openSettings(); });
 </script>
 </body>
 </html>
