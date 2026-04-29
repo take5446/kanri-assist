@@ -651,8 +651,8 @@ document.getElementById('settings-modal').addEventListener('click', e => {
   if (e.target.id === 'settings-modal') closeSettings();
 });
 
-// ===== API 呼び出し（共通） =====
-async function callClaude(system, user, maxTokens = 1500) {
+// ===== API 呼び出し（ストリーミング対応） =====
+async function callClaude(system, user, maxTokens = 1500, onChunk = null) {
   const apiKey = getApiKey();
   if (!apiKey) { openSettings(); throw new Error('APIキーを設定してください（⚙ボタン）'); }
   const res = await fetch("https://api.anthropic.com/v1/messages", {
@@ -666,13 +666,40 @@ async function callClaude(system, user, maxTokens = 1500) {
     body: JSON.stringify({
       model: "claude-sonnet-4-6",
       max_tokens: maxTokens,
+      stream: true,
       system,
       messages: [{ role: "user", content: user }]
     })
   });
-  const data = await res.json();
-  if (data.error) throw new Error(data.error.message);
-  return data.content.map(c => c.text || '').join('');
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error?.message || `HTTP ${res.status}`);
+  }
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let full = "";
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    const lines = decoder.decode(value, { stream: true }).split("\n");
+    for (const line of lines) {
+      if (!line.startsWith("data: ")) continue;
+      const json = line.slice(6).trim();
+      if (json === "[DONE]") continue;
+      try {
+        const evt = JSON.parse(json);
+        if (evt.type === "content_block_delta" && evt.delta?.type === "text_delta") {
+          full += evt.delta.text;
+          if (onChunk) onChunk(full);
+        } else if (evt.type === "error") {
+          throw new Error(evt.error?.message || "Stream error");
+        }
+      } catch (e) {
+        if (e.message !== "Stream error" && !(e instanceof SyntaxError)) throw e;
+      }
+    }
+  }
+  return full;
 }
 
 // ===== 朝番エージェント =====
@@ -706,6 +733,7 @@ async function generateMorningBrief() {
 
   try {
     const now = new Date();
+    result.className = 'result-body';
     const r = await callClaude(
       `あなたは「静かなる技術者」タケさんの専属AI秘書です。タケさんは管理部門に勤めながら技術の力で静かに問題を解決することを目指しています。
 今日（${now.getMonth()+1}月${now.getDate()}日）のタスクと会議から実践的な1日プランを作成してください。
@@ -714,9 +742,11 @@ async function generateMorningBrief() {
 1. 優先順位付きタスク（🔴高/🟡中/🟢低）
 2. 推奨タイムブロック（9:00〜18:00）
 3. 静かなる技術者の視点：今日のタスクで自動化・効率化できる点を1〜2点提案`,
-      `タスク:\n${tasks||"なし"}\n会議・予定:\n${meetings||"なし"}${focus?`\n懸念: ${focus}`:''}`
+      `タスク:\n${tasks||"なし"}\n会議・予定:\n${meetings||"なし"}${focus?`\n懸念: ${focus}`:''}`,
+      1500,
+      chunk => { result.textContent = chunk; }
     );
-    result.className = 'result-body'; result.textContent = r;
+    result.textContent = r;
     currentMorningResult = r;
   } catch(e) {
     result.className = 'result-body'; result.textContent = 'エラー: ' + e.message;
@@ -815,11 +845,13 @@ async function generateMail() {
   result.textContent = 'AIが返信文を作成しています…';
 
   try {
+    result.className = 'result-body';
     const r = await callClaude(
       `あなたは日本企業の管理部門のメール担当者です。受信メールに対して${tone}なトーンで返信メールを作成してください。件名（Re:〜）から本文・署名まで含めた完全な返信メールを出力してください。署名は「${sig || "管理部 担当者"}」としてください。${note ? "補足: " + note : ""}返信文のみ出力し、説明・前置き不要。`,
-      `以下のメールへの返信文を作成してください:\n\n${input}`
+      `以下のメールへの返信文を作成してください:\n\n${input}`,
+      1000,
+      chunk => { result.textContent = chunk; }
     );
-    result.className = 'result-body';
     result.textContent = r;
     currentMailResult = r;
   } catch(e) {
@@ -870,11 +902,14 @@ async function generateNego() {
   result.textContent = 'AIが文案を作成しています…';
 
   try {
+    result.className = 'result-body';
     const r = await callClaude(
       `あなたは日本企業の管理部門の交渉・調整支援エージェントです。「${NEGO_TYPES[negoTypeIdx]}」の場面で日本のビジネス文化に合った、丁寧かつ実務的な文案を作成します。相手との関係を壊さず、自分の立場や制約を伝えながら、目指す着地点へ向かう文章を書いてください。メール形式か口頭メモ形式（状況に応じて選択）で出力。文案のみ出力。`,
-      `状況・背景: ${context}\n自分の立場・制約: ${position||"管理部"}\n目指したい着地点: ${goal||"相互理解・合意"}`
+      `状況・背景: ${context}\n自分の立場・制約: ${position||"管理部"}\n目指したい着地点: ${goal||"相互理解・合意"}`,
+      1500,
+      chunk => { result.textContent = chunk; }
     );
-    result.className = 'result-body'; result.textContent = r;
+    result.textContent = r;
     currentNegoResult = r;
   } catch(e) {
     result.className = 'result-body'; result.textContent = 'エラー: ' + e.message;
@@ -905,7 +940,8 @@ async function runCheck() {
 必ず以下のJSON形式だけを出力してください。説明文・マークダウン・コードブロックは一切不要です。
 {"score":整数0-100,"overall":"OK","summary":"総評","items":[{"status":"ok","label":"項目名","detail":"説明"}]}
 overallは "OK" か "WARN" か "ERROR" のいずれか。statusは "ok" か "warn" か "err" のいずれか。`,
-      `以下の内容をチェックしてJSON形式のみで返答してください:\n\n${input}`
+      `以下の内容をチェックしてJSON形式のみで返答してください:\n\n${input}`,
+      1000
     );
     const match = raw.match(/\{[\s\S]*\}/);
     if (!match) throw new Error('JSONが見つかりませんでした');
