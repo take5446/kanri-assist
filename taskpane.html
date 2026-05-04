@@ -380,6 +380,41 @@
   .morning-date { font-size: 26px; font-weight: 900; line-height: 1.1; margin: 3px 0; }
   .morning-greet { font-size: 11px; color: rgba(255,255,255,0.55); margin-top: 3px; }
 
+  /* 業務モードグリッド */
+  .mode-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+    margin-bottom: 4px;
+  }
+  .mode-btn {
+    padding: 9px 6px;
+    border: 1.5px solid var(--border);
+    border-radius: 8px;
+    background: var(--surface);
+    font-family: inherit;
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--ink2);
+    cursor: pointer;
+    transition: all 0.12s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+  }
+  .mode-btn:hover { border-color: var(--ink2); color: var(--ink); }
+  .mode-btn.active { background: var(--gold-bg); color: var(--gold); border-color: var(--gold); }
+
+  /* 朝番結果 */
+  #morning-result {
+    max-height: none;
+    font-size: 12px;
+    line-height: 1.9;
+    letter-spacing: 0.01em;
+  }
+  #morning-result.loading { max-height: none; }
+
   /* 設定モーダル */
   .modal-overlay {
     position: fixed; inset: 0;
@@ -463,6 +498,16 @@
     </div>
 
     <div class="field">
+      <label class="label">今日の業務モード</label>
+      <div class="mode-grid">
+        <button class="mode-btn active" id="md-0" onclick="setMorningMode(0)">📅 通常業務</button>
+        <button class="mode-btn" id="md-1" onclick="setMorningMode(1)">🔥 締め切り集中</button>
+        <button class="mode-btn" id="md-2" onclick="setMorningMode(2)">🤝 会議・商談多め</button>
+        <button class="mode-btn" id="md-3" onclick="setMorningMode(3)">📊 月次・締め処理</button>
+      </div>
+    </div>
+
+    <div class="field">
       <label class="label">今日のタスク</label>
       <textarea id="morning-tasks" rows="5" placeholder="例：&#10;・契約書レビュー（A社）&#10;・予算申請書の作成&#10;・備品発注（締め切り今日）&#10;・部署横断MTG準備"></textarea>
     </div>
@@ -471,15 +516,15 @@
       <textarea id="morning-meetings" rows="3" placeholder="例：&#10;10:00 部長定例（30分）&#10;14:00 A社オンライン商談（1時間）"></textarea>
     </div>
     <div class="field">
-      <label class="label">今日の懸念・重点（任意）</label>
+      <label class="label">締め切り・懸念事項（任意）</label>
       <input id="morning-focus" type="text" placeholder="例：予算案の締め切りが今月末で厳しい">
     </div>
 
-    <button class="btn-primary" id="morning-btn" onclick="generateMorningBrief()">☀️ 1日プランを生成</button>
+    <button class="btn-primary" id="morning-btn" onclick="generateMorningBrief()">☀️ 本日のスケジュールを作成</button>
 
     <div class="result-card" id="morning-result-card" style="display:none">
       <div class="result-head">
-        ☀️ 今日の作戦
+        ☀️ 本日のスケジュール
         <button class="btn-secondary" style="font-size:10px;padding:3px 8px;" onclick="copyText(currentMorningResult)">コピー</button>
       </div>
       <div class="result-body" id="morning-result"></div>
@@ -624,7 +669,15 @@ let currentNegoResult = "";
 let tmplIdx = 0;
 let checkTypeIdx = 0;
 let negoTypeIdx = 0;
+let morningModeIdx = 0;
 let officeReady = false;
+
+const MORNING_MODES = [
+  { label: '通常業務',     desc: 'バランスよく一日をこなす通常モード' },
+  { label: '締め切り集中', desc: '重要な期限に向けて集中投下するモード' },
+  { label: '会議・商談多め', desc: '会議の合間に作業を最大化するモード' },
+  { label: '月次・締め処理', desc: '経理・月次レポートなど締め処理特化' }
+];
 
 // ===== Office.js 初期化 =====
 Office.onReady(info => {
@@ -675,7 +728,61 @@ async function callClaude(system, user, maxTokens = 1500) {
   return data.content.map(c => c.text || '').join('');
 }
 
+// ===== ストリーミング API 呼び出し =====
+async function streamClaude(system, user, maxTokens, onChunk) {
+  const apiKey = getApiKey();
+  if (!apiKey) { openSettings(); throw new Error('APIキーを設定してください（⚙ボタン）'); }
+  const res = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-api-key": apiKey,
+      "anthropic-version": "2023-06-01",
+      "anthropic-dangerous-request-proxy": "true"
+    },
+    body: JSON.stringify({
+      model: "claude-sonnet-4-6",
+      max_tokens: maxTokens,
+      stream: true,
+      system,
+      messages: [{ role: "user", content: user }]
+    })
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error?.message || `HTTP ${res.status}`);
+  }
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+  let fullText = '';
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split('\n');
+    buffer = lines.pop() || '';
+    for (const line of lines) {
+      if (!line.startsWith('data: ')) continue;
+      const data = line.slice(6).trim();
+      try {
+        const event = JSON.parse(data);
+        if (event.type === 'content_block_delta' && event.delta?.type === 'text_delta') {
+          fullText += event.delta.text;
+          onChunk(fullText);
+        }
+      } catch {}
+    }
+  }
+  return fullText;
+}
+
 // ===== 朝番エージェント =====
+function setMorningMode(idx) {
+  morningModeIdx = idx;
+  for (let i = 0; i < 4; i++) document.getElementById('md-'+i)?.classList.toggle('active', i === idx);
+}
+
 function initMorningCard() {
   const now = new Date();
   const days = ['日曜日','月曜日','火曜日','水曜日','木曜日','金曜日','土曜日'];
@@ -694,34 +801,59 @@ async function generateMorningBrief() {
   const tasks    = document.getElementById('morning-tasks').value.trim();
   const meetings = document.getElementById('morning-meetings').value.trim();
   const focus    = document.getElementById('morning-focus').value.trim();
-  if (!tasks && !meetings) return;
+  if (!tasks && !meetings) { showToast('⚠️ タスクまたは予定を入力してください'); return; }
 
   const btn = document.getElementById('morning-btn');
-  btn.disabled = true; btn.textContent = '⏳ 作戦立案中…';
+  btn.disabled = true; btn.textContent = '⏳ 作成中…';
   const card   = document.getElementById('morning-result-card');
   const result = document.getElementById('morning-result');
   card.style.display = 'block';
   result.className = 'result-body loading';
-  result.textContent = '今日の作戦を立案しています…';
+  result.textContent = '秘書が本日のスケジュールを立案しています…';
+
+  const now = new Date();
+  const dateStr = `${now.getFullYear()}年${now.getMonth()+1}月${now.getDate()}日（${'日月火水木金土'[now.getDay()]}）`;
+  const mode = MORNING_MODES[morningModeIdx].label;
+
+  const systemPrompt =
+`あなたは「静かなる技術者」タケさんの専属AI秘書です。管理部門の業務に精通し、タケさんの仕事スタイル（静かに技術で問題を解決する）を深く理解しています。
+本日は${dateStr}、業務モードは「${mode}」です。
+
+以下の形式で、実践的な1日スケジュールを作成してください。前置き・後書きは一切不要です。
+
+━━━ 本日のスケジュール ━━━
+
+【優先タスク】
+🔴 最重要（今日中に必須）
+  ▸ タスク名（対応ポイント）
+🟡 重要（今日中に対応）
+  ▸ タスク名
+🟢 余裕があれば
+  ▸ タスク名
+
+【タイムブロック】
+09:00–09:XX  作業内容
+HH:MM–HH:MM  ─ 会議名 ─  ← 会議はこの形式で記載
+（実際の会議時間を正確に配置すること）
+
+【秘書メモ】
+💡 効率化・自動化の提案（管理部門視点で具体的に1〜2点）${focus ? '\n⚠️ 懸念事項への対応策' : ''}`;
+
+  const userPrompt =
+`タスク:\n${tasks||"（なし）"}\n\n会議・予定:\n${meetings||"（なし）"}${focus ? `\n\n締め切り・懸念: ${focus}` : ''}`;
 
   try {
-    const now = new Date();
-    const r = await callClaude(
-      `あなたは「静かなる技術者」タケさんの専属AI秘書です。タケさんは管理部門に勤めながら技術の力で静かに問題を解決することを目指しています。
-今日（${now.getMonth()+1}月${now.getDate()}日）のタスクと会議から実践的な1日プランを作成してください。
-
-出力形式（簡潔に・余計な前置き不要）:
-1. 優先順位付きタスク（🔴高/🟡中/🟢低）
-2. 推奨タイムブロック（9:00〜18:00）
-3. 静かなる技術者の視点：今日のタスクで自動化・効率化できる点を1〜2点提案`,
-      `タスク:\n${tasks||"なし"}\n会議・予定:\n${meetings||"なし"}${focus?`\n懸念: ${focus}`:''}`
-    );
-    result.className = 'result-body'; result.textContent = r;
-    currentMorningResult = r;
+    result.className = 'result-body';
+    result.textContent = '';
+    currentMorningResult = await streamClaude(systemPrompt, userPrompt, 1500, partial => {
+      result.textContent = partial;
+      result.scrollTop = result.scrollHeight;
+    });
   } catch(e) {
-    result.className = 'result-body'; result.textContent = 'エラー: ' + e.message;
+    result.className = 'result-body';
+    result.textContent = 'エラー: ' + e.message;
   }
-  btn.disabled = false; btn.textContent = '☀️ 1日プランを生成';
+  btn.disabled = false; btn.textContent = '☀️ 本日のスケジュールを作成';
 }
 
 // ===== テンプレートデータ =====
