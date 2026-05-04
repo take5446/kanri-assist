@@ -713,8 +713,7 @@ async function callClaude(system, user, maxTokens = 1500) {
     headers: {
       "Content-Type": "application/json",
       "x-api-key": apiKey,
-      "anthropic-version": "2023-06-01",
-      "anthropic-dangerous-request-proxy": "true"
+      "anthropic-version": "2023-06-01"
     },
     body: JSON.stringify({
       model: "claude-sonnet-4-6",
@@ -737,8 +736,7 @@ async function streamClaude(system, user, maxTokens, onChunk) {
     headers: {
       "Content-Type": "application/json",
       "x-api-key": apiKey,
-      "anthropic-version": "2023-06-01",
-      "anthropic-dangerous-request-proxy": "true"
+      "anthropic-version": "2023-06-01"
     },
     body: JSON.stringify({
       model: "claude-sonnet-4-6",
