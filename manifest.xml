@@ -18,6 +18,11 @@
   <HighResolutionIconUrl DefaultValue="https://take5446.github.io/kanri-assist/icon-64.png"/>
   <SupportUrl DefaultValue="https://take5446.github.io/kanri-assist/"/>
 
+  <!-- 外部API通信の許可ドメイン -->
+  <AppDomains>
+    <AppDomain>https://api.anthropic.com</AppDomain>
+  </AppDomains>
+
   <!-- Outlook専用設定 -->
   <Hosts>
     <Host Name="Mailbox"/>
