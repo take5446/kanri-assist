@@ -379,6 +379,50 @@
   .morning-day  { font-size: 10px; font-weight: 700; color: #C8A830; letter-spacing: 0.12em; }
   .morning-date { font-size: 26px; font-weight: 900; line-height: 1.1; margin: 3px 0; }
   .morning-greet { font-size: 11px; color: rgba(255,255,255,0.55); margin-top: 3px; }
+  .morning-meta {
+    margin-top: 10px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .morning-hours-label { font-size: 10px; color: rgba(255,255,255,0.5); white-space: nowrap; }
+  .morning-hours-inputs { display: flex; align-items: center; gap: 5px; }
+  .morning-hours-inputs input {
+    width: 56px;
+    background: rgba(255,255,255,0.1);
+    border: 1px solid rgba(255,255,255,0.2);
+    border-radius: 6px;
+    color: #fff;
+    font-size: 12px;
+    font-weight: 700;
+    padding: 4px 7px;
+    text-align: center;
+    outline: none;
+  }
+  .morning-hours-inputs input:focus { border-color: #C8A830; }
+  .morning-hours-sep { font-size: 11px; color: rgba(255,255,255,0.4); }
+
+  /* クイックタスクチップ */
+  .quick-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    margin-top: 6px;
+    margin-bottom: 6px;
+  }
+  .quick-chip {
+    padding: 4px 9px;
+    border-radius: 14px;
+    border: 1.5px solid var(--border);
+    background: var(--surface);
+    font-family: inherit;
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--ink2);
+    cursor: pointer;
+    transition: all 0.12s;
+  }
+  .quick-chip:hover { border-color: var(--gold); color: var(--gold); background: var(--gold-bg); }
 
   /* 業務モードグリッド */
   .mode-grid {
@@ -495,6 +539,14 @@
       <div class="morning-day"  id="morning-day"></div>
       <div class="morning-date" id="morning-date-num"></div>
       <div class="morning-greet" id="morning-greet"></div>
+      <div class="morning-meta">
+        <span class="morning-hours-label">勤務時間</span>
+        <div class="morning-hours-inputs">
+          <input type="time" id="morning-start" value="09:00">
+          <span class="morning-hours-sep">〜</span>
+          <input type="time" id="morning-end" value="18:00">
+        </div>
+      </div>
     </div>
 
     <div class="field">
@@ -508,9 +560,19 @@
     </div>
 
     <div class="field">
-      <label class="label">今日のタスク</label>
-      <textarea id="morning-tasks" rows="5" placeholder="例：&#10;・契約書レビュー（A社）&#10;・予算申請書の作成&#10;・備品発注（締め切り今日）&#10;・部署横断MTG準備"></textarea>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px;">
+        <label class="label" style="margin:0">今日のタスク</label>
+        <button class="btn-secondary" style="font-size:10px;padding:3px 8px;" onclick="clearMorningTasks()">クリア</button>
+      </div>
+      <div class="quick-chips" id="quick-chips"></div>
+      <textarea id="morning-tasks" rows="4" placeholder="例：&#10;・契約書レビュー（A社）&#10;・予算申請書の作成&#10;・備品発注（締め切り今日）&#10;・部署横断MTG準備"></textarea>
     </div>
+
+    <div class="field">
+      <label class="label">昨日の積み残し（任意）</label>
+      <textarea id="morning-carryover" rows="2" placeholder="例：&#10;・A社見積もりの最終確認&#10;・経費精算の承認待ち3件"></textarea>
+    </div>
+
     <div class="field">
       <label class="label">会議・予定</label>
       <textarea id="morning-meetings" rows="3" placeholder="例：&#10;10:00 部長定例（30分）&#10;14:00 A社オンライン商談（1時間）"></textarea>
@@ -525,9 +587,20 @@
     <div class="result-card" id="morning-result-card" style="display:none">
       <div class="result-head">
         ☀️ 本日のスケジュール
-        <button class="btn-secondary" style="font-size:10px;padding:3px 8px;" onclick="copyText(currentMorningResult)">コピー</button>
+        <div style="display:flex;gap:5px;">
+          <button class="btn-secondary" style="font-size:10px;padding:3px 8px;" onclick="saveMorningSchedule()">💾 保存</button>
+          <button class="btn-secondary" style="font-size:10px;padding:3px 8px;" onclick="copyText(currentMorningResult)">コピー</button>
+        </div>
       </div>
       <div class="result-body" id="morning-result"></div>
+    </div>
+
+    <div id="morning-saved-card" style="display:none;margin-top:10px;">
+      <div class="result-head" style="background:#EAF6EE;border-color:rgba(20,122,69,0.2);">
+        <span style="color:#147A45;">📌 保存済みスケジュール</span>
+        <button class="btn-secondary" style="font-size:10px;padding:3px 8px;" onclick="clearSavedSchedule()">削除</button>
+      </div>
+      <div class="result-body" id="morning-saved-body" style="max-height:120px;font-size:11px;color:#5C5750;"></div>
     </div>
   </div>
 
@@ -778,9 +851,105 @@ async function streamClaude(system, user, maxTokens, onChunk) {
 }
 
 // ===== 朝番エージェント =====
+const QUICK_TASKS = [
+  { label: '📬 メール確認', text: '・未読メールの確認・返信（優先度の高いもの）' },
+  { label: '📋 稟議確認', text: '・承認待ち稟議の確認・決裁' },
+  { label: '💰 経費精算', text: '・経費精算の確認・承認' },
+  { label: '📊 日次レポート', text: '・日次報告書の作成・提出' },
+  { label: '📞 電話折り返し', text: '・要折り返し電話の対応' },
+  { label: '🗂️ 書類整理', text: '・書類の整理・ファイリング' },
+  { label: '👥 チーム確認', text: '・チームメンバーの進捗確認' },
+  { label: '📦 発注確認', text: '・発注状況・納期の確認' },
+];
+
+function buildQuickChips() {
+  const wrap = document.getElementById('quick-chips');
+  if (!wrap) return;
+  wrap.innerHTML = '';
+  QUICK_TASKS.forEach(qt => {
+    const btn = document.createElement('button');
+    btn.className = 'quick-chip';
+    btn.textContent = qt.label;
+    btn.onclick = () => addQuickTask(qt.text);
+    wrap.appendChild(btn);
+  });
+}
+
+function addQuickTask(text) {
+  const ta = document.getElementById('morning-tasks');
+  const cur = ta.value.trim();
+  ta.value = cur ? cur + '\n' + text : text;
+  saveMorningInputs();
+}
+
+function clearMorningTasks() {
+  document.getElementById('morning-tasks').value = '';
+  saveMorningInputs();
+}
+
 function setMorningMode(idx) {
   morningModeIdx = idx;
   for (let i = 0; i < 4; i++) document.getElementById('md-'+i)?.classList.toggle('active', i === idx);
+  saveMorningInputs();
+}
+
+function saveMorningInputs() {
+  const data = {
+    tasks:     document.getElementById('morning-tasks').value,
+    carryover: document.getElementById('morning-carryover').value,
+    meetings:  document.getElementById('morning-meetings').value,
+    focus:     document.getElementById('morning-focus').value,
+    mode:      morningModeIdx,
+    start:     document.getElementById('morning-start').value,
+    end:       document.getElementById('morning-end').value,
+  };
+  localStorage.setItem('kanri-morning-inputs', JSON.stringify(data));
+}
+
+function restoreMorningInputs() {
+  try {
+    const raw = localStorage.getItem('kanri-morning-inputs');
+    if (!raw) return;
+    const d = JSON.parse(raw);
+    if (d.tasks     !== undefined) document.getElementById('morning-tasks').value     = d.tasks;
+    if (d.carryover !== undefined) document.getElementById('morning-carryover').value = d.carryover;
+    if (d.meetings  !== undefined) document.getElementById('morning-meetings').value  = d.meetings;
+    if (d.focus     !== undefined) document.getElementById('morning-focus').value     = d.focus;
+    if (d.start     !== undefined) document.getElementById('morning-start').value     = d.start;
+    if (d.end       !== undefined) document.getElementById('morning-end').value       = d.end;
+    if (d.mode      !== undefined) setMorningMode(d.mode);
+  } catch {}
+}
+
+function saveMorningSchedule() {
+  if (!currentMorningResult) return;
+  const now = new Date();
+  const dateLabel = `${now.getMonth()+1}/${now.getDate()}`;
+  localStorage.setItem('kanri-morning-saved', JSON.stringify({ date: dateLabel, text: currentMorningResult }));
+  showToast('💾 スケジュールを保存しました');
+  loadSavedSchedule();
+}
+
+function loadSavedSchedule() {
+  try {
+    const raw = localStorage.getItem('kanri-morning-saved');
+    if (!raw) return;
+    const d = JSON.parse(raw);
+    const card = document.getElementById('morning-saved-card');
+    const body = document.getElementById('morning-saved-body');
+    if (!card || !body) return;
+    card.style.display = 'block';
+    const head = card.querySelector('.result-head span');
+    if (head) head.textContent = `📌 ${d.date} 保存済みスケジュール`;
+    body.textContent = d.text;
+  } catch {}
+}
+
+function clearSavedSchedule() {
+  localStorage.removeItem('kanri-morning-saved');
+  const card = document.getElementById('morning-saved-card');
+  if (card) card.style.display = 'none';
+  showToast('🗑️ 削除しました');
 }
 
 function initMorningCard() {
@@ -796,12 +965,23 @@ function initMorningCard() {
     `${greet}、タケさん。今日も静かに、着実に。`;
 }
 initMorningCard();
+buildQuickChips();
+restoreMorningInputs();
+loadSavedSchedule();
+
+['morning-tasks','morning-carryover','morning-meetings','morning-focus','morning-start','morning-end'].forEach(id => {
+  const el = document.getElementById(id);
+  if (el) el.addEventListener('input', saveMorningInputs);
+});
 
 async function generateMorningBrief() {
-  const tasks    = document.getElementById('morning-tasks').value.trim();
-  const meetings = document.getElementById('morning-meetings').value.trim();
-  const focus    = document.getElementById('morning-focus').value.trim();
-  if (!tasks && !meetings) { showToast('⚠️ タスクまたは予定を入力してください'); return; }
+  const tasks     = document.getElementById('morning-tasks').value.trim();
+  const carryover = document.getElementById('morning-carryover').value.trim();
+  const meetings  = document.getElementById('morning-meetings').value.trim();
+  const focus     = document.getElementById('morning-focus').value.trim();
+  const startTime = document.getElementById('morning-start').value || '09:00';
+  const endTime   = document.getElementById('morning-end').value   || '18:00';
+  if (!tasks && !meetings && !carryover) { showToast('⚠️ タスクまたは予定を入力してください'); return; }
 
   const btn = document.getElementById('morning-btn');
   btn.disabled = true; btn.textContent = '⏳ 作成中…';
@@ -817,7 +997,7 @@ async function generateMorningBrief() {
 
   const systemPrompt =
 `あなたは「静かなる技術者」タケさんの専属AI秘書です。管理部門の業務に精通し、タケさんの仕事スタイル（静かに技術で問題を解決する）を深く理解しています。
-本日は${dateStr}、業務モードは「${mode}」です。
+本日は${dateStr}、業務モードは「${mode}」、勤務時間は${startTime}〜${endTime}です。
 
 以下の形式で、実践的な1日スケジュールを作成してください。前置き・後書きは一切不要です。
 
@@ -825,22 +1005,23 @@ async function generateMorningBrief() {
 
 【優先タスク】
 🔴 最重要（今日中に必須）
-  ▸ タスク名（対応ポイント）
+  ▸ タスク名（対応ポイント・目安時間）
 🟡 重要（今日中に対応）
-  ▸ タスク名
+  ▸ タスク名（目安時間）
 🟢 余裕があれば
-  ▸ タスク名
+  ▸ タスク名${carryover ? '\n\n【昨日からの積み残し対応】\n⏩ 各積み残しをいつ処理するか明示' : ''}
 
 【タイムブロック】
-09:00–09:XX  作業内容
-HH:MM–HH:MM  ─ 会議名 ─  ← 会議はこの形式で記載
-（実際の会議時間を正確に配置すること）
+${startTime}–HH:MM  作業内容（集中ブロック）
+HH:MM–HH:MM  ─ 会議名 ─  ← 会議はこの形式
+HH:MM–HH:MM  作業内容
+（実際の会議時間を正確に配置。勤務時間${startTime}〜${endTime}の範囲で全時間をカバーすること）
 
 【秘書メモ】
-💡 効率化・自動化の提案（管理部門視点で具体的に1〜2点）${focus ? '\n⚠️ 懸念事項への対応策' : ''}`;
+💡 今日の業務効率化ポイント（管理部門視点で具体的に1〜2点）${focus ? '\n⚠️ 懸念事項への具体的対応策' : ''}`;
 
   const userPrompt =
-`タスク:\n${tasks||"（なし）"}\n\n会議・予定:\n${meetings||"（なし）"}${focus ? `\n\n締め切り・懸念: ${focus}` : ''}`;
+`タスク:\n${tasks||"（なし）"}${carryover ? `\n\n昨日の積み残し:\n${carryover}` : ''}\n\n会議・予定:\n${meetings||"（なし）"}${focus ? `\n\n締め切り・懸念: ${focus}` : ''}`;
 
   try {
     result.className = 'result-body';
