@@ -66,11 +66,11 @@
   }
   .tab {
     flex: 1;
-    padding: 9px 4px;
+    padding: 9px 2px;
     border: none;
     background: transparent;
     font-family: inherit;
-    font-size: 11px;
+    font-size: 10px;
     font-weight: 700;
     color: var(--ink3);
     cursor: pointer;
@@ -497,6 +497,71 @@
   }
   .btn-modal-save:hover { background: #333; }
 
+  /* 評定パネル */
+  .eval-item-card {
+    background: var(--surface);
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    margin-bottom: 10px;
+  }
+  .eval-item-head {
+    background: var(--gold-bg);
+    border-bottom: 1px solid rgba(160,120,32,0.2);
+    padding: 8px 12px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .eval-item-no {
+    font-size: 11px;
+    font-weight: 900;
+    color: var(--gold);
+    letter-spacing: 0.08em;
+  }
+  .eval-item-yakuwari {
+    font-size: 10px;
+    color: var(--ink3);
+    font-weight: 600;
+  }
+  .eval-item-body { padding: 10px 12px; }
+  .eval-row {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 6px;
+    font-size: 12px;
+    line-height: 1.5;
+  }
+  .eval-row-label {
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--ink3);
+    letter-spacing: 0.06em;
+    white-space: nowrap;
+    padding-top: 1px;
+    min-width: 50px;
+  }
+  .eval-row-val { color: var(--ink); flex: 1; }
+  .eval-badges {
+    display: flex;
+    gap: 6px;
+    margin-top: 2px;
+  }
+  .eval-badge {
+    padding: 3px 9px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 700;
+  }
+  .eval-badge-b { background: var(--amber-bg); color: var(--amber); }
+  .eval-badge-c { background: var(--blue-bg); color: var(--blue); }
+  .eval-badge-haibun { background: var(--green-bg); color: var(--green); }
+  .eval-copy-all-bar {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 12px;
+  }
+
   /* コピー完了トースト */
   .toast {
     position: fixed;
@@ -529,6 +594,7 @@
   <button class="tab" onclick="switchTab('mail',this)">📧 返信</button>
   <button class="tab" onclick="switchTab('check',this)">🔍 書類</button>
   <button class="tab" onclick="switchTab('nego',this)">🤝 調整</button>
+  <button class="tab" onclick="switchTab('eval',this)">💴 評定</button>
 </div>
 
 <div class="scroll">
@@ -712,6 +778,60 @@
       </div>
       <div class="result-body" id="nego-result"></div>
     </div>
+  </div>
+
+  <!-- ===== 評定パネル ===== -->
+  <div id="panel-eval" class="panel">
+
+    <div style="background:var(--gold-bg);border:1px solid rgba(160,120,32,0.25);border-radius:var(--radius);padding:9px 12px;font-size:11px;color:var(--gold);font-weight:600;margin-bottom:12px;">
+      💴 2026年上期 賞与評定シート　自己評価生成<br>
+      <span style="font-size:10px;font-weight:400;color:var(--ink3);">対象期間：2025年11月1日〜2026年4月30日（6か月）</span>
+    </div>
+
+    <div class="field">
+      <label class="label">業績課題（アセスメントシートより）</label>
+      <textarea id="eval-kadai" rows="9" style="font-size:11px;">1. 【業務品質の向上と納期遵守の仕組み化】配分30% 難易度C普通
+品証部からの無償出荷依頼に対し、要求納期と約束納期の整合を徹底し、納期遵守による安定出荷に繋げる。設計変更反映・手配業務において、システム小改善を実施し、ハンド処理に伴う転記ミスや手配漏れのリスクを低減する。
+
+2. 【設計変更「ECN」処理の遅延回避とリードタイム短縮】配分30% 難易度B高い
+ECNに対し、部門内での処理を出図後現在の半分にする。現行「AS400」の設変マスター等の仕様・現在の要求仕様を理解し（情シ協働）、次期システム「IFS Cloud」の要件定義に繋げる。
+
+3. 【PDC設備安定稼働〜予防保全の標準化〜】配分20% 難易度C普通
+設備予算計画を高品質・予算内・遅れ無く遂行する。故障による部品供給への影響を未然に防ぐため、エラー事象の記録・整理を行う。点検・報告・事前対策のフローを構築する。
+
+4. 【現行システムの最適化とIFS cloudへの安定移行】配分20% 難易度C普通
+AS400における設計変更業務を含む作業フローを整理・精査し、ハンド処理に伴う転記ミスや処理滞留の要因を明確化する。DFMEAを用いてシステム変更時に発生し得るリスクを低減し、分析結果を「IFS Cloud」の要件定義へ反映させる。</textarea>
+    </div>
+
+    <div class="field">
+      <label class="label">役割項目（職能・プロセスより）</label>
+      <textarea id="eval-yakuwari" rows="7" style="font-size:11px;">1. 成果責任: 「全社方針・部門方針」を理解し、納期遵守と利益貢献に責任を持つ。技術的知見を「数字」と「仕組み」に落とし込み、組織全体の信頼性向上に貢献する
+2. 企画: 常に事実（データ）を確認し、目的を捉えた提案を行う。「事前相談（たたき台提示）」を行い、部内・社内・関連企業との合意形成を丁寧に進める
+3. 専門性: 技術スキルを「日々のケアレスミスをなくすツール」として活用する。技術仕様を誰でも理解できる標準マニュアルへ落とし込み、属人化を排除する
+4. 改革・創造・改善: 現状の「変えないが上の間違いやすいプロセス」を発見し、「是正」「無駄の排除」を試みる。改善の目的は常に「品質向上とリスク低減」
+5. 組織行動・部下育成: 部門メンバーと協力し、知見を部内へ共有する。他部署（技術・品証・資材）との調整においては「相手の立場に立った伝え方」を徹底する
+6. 折衝・調整/報連相: 「速さ・正確さ・頻度」を意識した報連相を徹底する。進捗が順調であっても「異常なし」の報告を欠かさない</textarea>
+    </div>
+
+    <div style="display:flex;gap:8px;margin-bottom:12px;">
+      <div class="field" style="flex:1;margin:0;">
+        <label class="label">生成項目数</label>
+        <select id="eval-count">
+          <option value="3" selected>3項目</option>
+          <option value="2">2項目</option>
+          <option value="4">4項目</option>
+        </select>
+      </div>
+      <div class="field" style="flex:2;margin:0;">
+        <label class="label">対象期間</label>
+        <input id="eval-period" type="text" value="2025年11月1日〜2026年4月30日（6か月）">
+      </div>
+    </div>
+
+    <button class="btn-primary" id="eval-btn" onclick="generateEvaluation()">💴 賞与評定項目を生成</button>
+
+    <div id="eval-result" style="margin-top:14px;display:none;"></div>
+
   </div>
 
 </div>
@@ -1193,6 +1313,110 @@ async function generateNego() {
     result.className = 'result-body'; result.textContent = 'エラー: ' + e.message;
   }
   btn.disabled = false; btn.textContent = '🤝 文案を生成';
+}
+
+// ===== 評定エージェント =====
+let currentEvalResult = [];
+
+async function generateEvaluation() {
+  const kadai   = document.getElementById('eval-kadai').value.trim();
+  const yakuwari = document.getElementById('eval-yakuwari').value.trim();
+  const period  = document.getElementById('eval-period').value.trim();
+  const count   = document.getElementById('eval-count').value;
+  if (!kadai) return;
+
+  const btn = document.getElementById('eval-btn');
+  btn.disabled = true; btn.textContent = '⏳ 生成中…';
+  const wrap = document.getElementById('eval-result');
+  wrap.style.display = 'block';
+  wrap.innerHTML = '<div style="color:#9C9890;font-size:12px;padding:8px 0;text-align:center;">AIが評定項目を作成しています…</div>';
+
+  const systemPrompt = `あなたは日本企業の人事評価支援エージェントです。
+アセスメントシートの業績課題と役割項目をベースに、上期賞与評定シートの自己評価課題項目を生成します。
+
+生成ルール：
+- 対象期間：${period}
+- 項目数：${count}項目（配分の合計が必ず100になるよう設定）
+- 課題文は具体的・測定可能な表現にし、対象期間を含める
+- 難易度B（高い）の業績課題はより高い配分・重要度に反映する
+- 重要度はA（非常に高い）/ B（高い）/ C（普通）のいずれか
+- 各項目に関連する役割項目名を1〜2つ選んで紐付ける
+- 目標値は数値や具体的指標で表現する
+
+必ず以下のJSON配列のみを出力してください（説明・マークダウン・コードブロック不要）：
+[{"no":1,"kadai":"課題の記述（対象期間を含む）","mokuhyouchi":"具体的な目標値・指標","juyodo":"C","haibun":40,"yakuwari":"成果責任・改革・創造・改善"}]`;
+
+  const userPrompt = `業績課題（アセスメントシートより）：
+${kadai}
+
+役割項目：
+${yakuwari}
+
+上記をベースに${count}項目の賞与評定課題をJSON形式で生成してください。`;
+
+  try {
+    const raw = await callClaude(systemPrompt, userPrompt, 1200);
+    const match = raw.match(/\[[\s\S]*\]/);
+    if (!match) throw new Error('JSONが見つかりませんでした');
+    const items = JSON.parse(match[0]);
+    currentEvalResult = items;
+    renderEvaluation(items, period);
+  } catch(e) {
+    wrap.innerHTML = `<div style="color:#C42020;font-size:12px;padding:8px 0;">エラー: ${e.message}</div>`;
+  }
+  btn.disabled = false; btn.textContent = '💴 賞与評定項目を生成';
+}
+
+function renderEvaluation(items, period) {
+  const juyodoMap = { A: '重要度A 非常に高い', B: '重要度B 高い', C: '重要度C 普通' };
+  const juyodoClass = { A: 'eval-badge-b', B: 'eval-badge-b', C: 'eval-badge-c' };
+
+  const cards = items.map(item => `
+    <div class="eval-item-card">
+      <div class="eval-item-head">
+        <span class="eval-item-no">No. ${item.no}</span>
+        <span class="eval-item-yakuwari">${item.yakuwari || ''}</span>
+      </div>
+      <div class="eval-item-body">
+        <div class="eval-row">
+          <span class="eval-row-label">課題</span>
+          <span class="eval-row-val">${item.kadai}</span>
+        </div>
+        <div class="eval-row">
+          <span class="eval-row-label">目標値</span>
+          <span class="eval-row-val">${item.mokuhyouchi}</span>
+        </div>
+        <div class="eval-badges">
+          <span class="eval-badge ${juyodoClass[item.juyodo] || 'eval-badge-c'}">${juyodoMap[item.juyodo] || '重要度' + item.juyodo}</span>
+          <span class="eval-badge eval-badge-haibun">配分 ${item.haibun}%</span>
+        </div>
+      </div>
+    </div>`).join('');
+
+  const totalHaibun = items.reduce((s, i) => s + (i.haibun || 0), 0);
+  const haibunColor = totalHaibun === 100 ? 'var(--green)' : 'var(--red)';
+
+  document.getElementById('eval-result').innerHTML = `
+    <div class="eval-copy-all-bar">
+      <button class="btn-secondary" style="flex:1;font-size:11px;" onclick="copyText(buildEvalPlainText(currentEvalResult, document.getElementById('eval-period').value))">📋 全項目コピー</button>
+      <span style="font-size:11px;color:${haibunColor};font-weight:700;align-self:center;">配分計: ${totalHaibun}%</span>
+    </div>
+    ${cards}
+    <div style="font-size:10px;color:var(--ink3);text-align:center;margin-top:4px;">実績・評価尺度はシートへ直接入力してください</div>`;
+}
+
+function buildEvalPlainText(items, period) {
+  const lines = [`■ 2026年上期 賞与評定シート 自己評価`, `対象期間：${period || '2025年11月1日〜2026年4月30日'}`, ''];
+  items.forEach(item => {
+    lines.push(`【No.${item.no}】`);
+    lines.push(`課題　　: ${item.kadai}`);
+    lines.push(`目標値　: ${item.mokuhyouchi}`);
+    lines.push(`重要度　: ${item.juyodo}`);
+    lines.push(`配分　　: ${item.haibun}%`);
+    lines.push(`役割項目: ${item.yakuwari}`);
+    lines.push('');
+  });
+  return lines.join('\n');
 }
 
 // サンプル
