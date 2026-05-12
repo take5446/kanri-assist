@@ -845,6 +845,11 @@ AS400における設計変更業務を含む作業フローを整理・精査し
       <label class="label">Anthropic API Key</label>
       <input type="password" id="api-key-input" placeholder="sk-ant-...">
     </div>
+    <div class="field">
+      <label class="label">プロキシURL（CORS回避用）</label>
+      <input type="text" id="proxy-url-input" placeholder="https://your-worker.workers.dev">
+      <div style="font-size:10px;color:var(--ink3);margin-top:4px;">Cloudflare WorkerのURLを入力（未設定の場合はAnthropicへ直接接続）</div>
+    </div>
     <div class="modal-footer">
       <button class="btn-modal-cancel" onclick="closeSettings()">キャンセル</button>
       <button class="btn-modal-save" onclick="saveSettings()">✓ 保存</button>
@@ -882,16 +887,25 @@ Office.onReady(info => {
 
 // ===== API キー管理 =====
 function getApiKey() { return localStorage.getItem('kanri-assist-api-key') || ''; }
+function getProxyUrl() { return localStorage.getItem('kanri-assist-proxy-url') || ''; }
+function getApiEndpoint() {
+  const proxy = getProxyUrl();
+  return proxy ? proxy : 'https://api.anthropic.com/v1/messages';
+}
 function openSettings() {
   document.getElementById('api-key-input').value = getApiKey();
+  document.getElementById('proxy-url-input').value = getProxyUrl();
   document.getElementById('settings-modal').classList.add('show');
 }
 function closeSettings() { document.getElementById('settings-modal').classList.remove('show'); }
 function saveSettings() {
   const key = document.getElementById('api-key-input').value.trim();
+  const proxy = document.getElementById('proxy-url-input').value.trim();
   if (key) localStorage.setItem('kanri-assist-api-key', key);
+  if (proxy) localStorage.setItem('kanri-assist-proxy-url', proxy);
+  else localStorage.removeItem('kanri-assist-proxy-url');
   closeSettings();
-  showToast('✅ APIキーを保存しました');
+  showToast('✅ 設定を保存しました');
 }
 document.getElementById('settings-modal').addEventListener('click', e => {
   if (e.target.id === 'settings-modal') closeSettings();
@@ -901,7 +915,7 @@ document.getElementById('settings-modal').addEventListener('click', e => {
 async function callClaude(system, user, maxTokens = 1500) {
   const apiKey = getApiKey();
   if (!apiKey) { openSettings(); throw new Error('APIキーを設定してください（⚙ボタン）'); }
-  const res = await fetch("https://api.anthropic.com/v1/messages", {
+  const res = await fetch(getApiEndpoint(), {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -925,7 +939,7 @@ async function callClaude(system, user, maxTokens = 1500) {
 async function streamClaude(system, user, maxTokens, onChunk) {
   const apiKey = getApiKey();
   if (!apiKey) { openSettings(); throw new Error('APIキーを設定してください（⚙ボタン）'); }
-  const res = await fetch("https://api.anthropic.com/v1/messages", {
+  const res = await fetch(getApiEndpoint(), {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
