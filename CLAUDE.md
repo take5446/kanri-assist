@@ -40,13 +40,63 @@
 
 ```
 kanri-assist/
-├── taskpane.html   # メイン UI（全エージェント実装）
-├── manifest.xml    # Office アドイン設定（GitHub Pages ホスト）
-├── commands.html   # リボンコマンド定義
-└── CLAUDE.md       # 本設計書
+├── taskpane.html          # メイン UI（全エージェント実装）
+├── manifest.xml           # Office アドイン設定（GitHub Pages ホスト）
+├── commands.html          # リボンコマンド定義
+├── cors-proxy-worker.js   # Cloudflare Worker（CORS プロキシ）
+├── learnings/             # ミス改善フォルダ（エージェント学習用）
+│   └── hyoka-mistakes.md  # 評価シート記入ミス事例集
+└── CLAUDE.md              # 本設計書
 ```
 
-## 今後の拡張候補
+---
+
+## エージェントチーム：💴 評定シート生成パイプライン
+
+「評定シートを作って」と依頼されたら、以下の5ステップで動く。
+
+```
+タケさん（議事録・アセスメント情報を渡す）
+        ↓
+Step1【読み込み】
+  learnings/hyoka-mistakes.md を必ず最初に読む
+        ↓
+Step2【構造化】
+  業績課題・役割項目を整理し、上期評定に使える形に変換
+        ↓
+Step3【並列リサーチ（3体同時）】
+  ├─ ミス照合エージェント：過去ミス事例と照合し、問題点を指摘
+  ├─ 重要度判定エージェント：難易度B以上は配分・重要度を高く設定
+  └─ 表現品質エージェント：数値・期間・主語・能動表現を確認
+        ↓
+Step4【統合】
+  3体の指摘を反映して課題文・目標値・重要度・配分を確定
+        ↓
+Step5【検証＆出力】
+  配分合計=100%を確認 → 評定シート項目を出力
+```
+
+### 呼び出し方（タケさんへ）
+
+このチャットで以下のように話しかけるだけ：
+
+```
+「評定シートを3項目作って。
+　learnings/hyoka-mistakes.md を読んで
+　過去のミスを避けながら生成して」
+```
+
+---
+
+## ミス改善フォルダの使い方
+
+`learnings/` フォルダにミス事例を蓄積していく。
+
+- 新しいミスを発見したら `learnings/hyoka-mistakes.md` に追記
+- 他業務のミス集も追加可能（例：`learnings/mail-mistakes.md`）
+- エージェントはタスク開始前に必ずこのフォルダを参照する
+
+
 
 - カレンダー連携（Office.js `mailbox.getCallbackTokenAsync` 経由）
 - 週次レポート自動生成エージェント
